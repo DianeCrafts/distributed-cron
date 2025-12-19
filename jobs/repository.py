@@ -1,0 +1,50 @@
+from storage.db import get_connection
+from jobs.models import Job
+from datetime import datetime
+import sqlite3
+
+class JobRepository:
+    def __init__(self):
+        self.conn = get_connection()
+        self.conn.row_factory = sqlite3.Row
+
+    def load_jobs(self):
+        """Load all jobs from DB as Job objects"""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT id, interval_seconds, last_run_time FROM jobs")
+        rows = cursor.fetchall()
+
+        jobs = []
+        for row in rows:
+            last_run = None
+            if row["last_run_time"]:
+                last_run = datetime.fromisoformat(row["last_run_time"])
+            job = Job(
+                job_id=row["id"],
+                interval_seconds=row["interval_seconds"],
+                task=lambda id=row["id"]: print(f"Executing {id} (default task)"),
+            )
+            job.last_run_time = last_run
+            jobs.append(job)
+        return jobs
+
+    def update_last_run(self, job_id, last_run_time):
+        """Update the last_run_time of a job"""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "UPDATE jobs SET last_run_time = ? WHERE id = ?",
+            (last_run_time.isoformat(), job_id),
+        )
+        self.conn.commit()
+
+    def add_job(self, job_id, interval_seconds):
+        """Insert a new job if it doesn't exist"""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "INSERT OR IGNORE INTO jobs (id, interval_seconds) VALUES (?, ?)",
+            (job_id, interval_seconds),
+        )
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
