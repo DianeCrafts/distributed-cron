@@ -60,27 +60,35 @@ class JobRepository:
         )
         self.conn.commit()
 
-    def fetch_next_job(self):
-        """Fetch one unexecuted job"""
+    def fetch_next_job_for_worker(self):
         cursor = self.conn.cursor()
         cursor.execute("""
             SELECT id, job_id FROM job_queue
-            WHERE executed_at IS NULL
+            WHERE status = 'pending'
             ORDER BY enqueued_at
             LIMIT 1
         """)
         row = cursor.fetchone()
-        return row
+        if row:
+            cursor.execute("""
+                UPDATE job_queue
+                SET status = 'in_progress'
+                WHERE id = ? AND status = 'pending'
+            """, (row["id"],))
+            self.conn.commit()
+            return row
+        return None
 
-    def mark_job_executed(self, queue_id):
-        """Mark job as executed"""
+
+    def mark_job_done(self, queue_id):
         cursor = self.conn.cursor()
         cursor.execute("""
             UPDATE job_queue
-            SET executed_at = ?
+            SET status = 'done', executed_at = ?
             WHERE id = ?
         """, (datetime.utcnow().isoformat(), queue_id))
         self.conn.commit()
+
     
     def close(self):
         self.conn.close()
