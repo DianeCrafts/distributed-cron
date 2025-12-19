@@ -46,5 +46,44 @@ class JobRepository:
         )
         self.conn.commit()
 
+
+
+    # -------------------------
+    # Job Queue Methods
+    # -------------------------
+    def enqueue_job(self, job_id):
+        """Add a job to the queue"""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "INSERT INTO job_queue (job_id, enqueued_at) VALUES (?, ?)",
+            (job_id, datetime.utcnow().isoformat())
+        )
+        self.conn.commit()
+
+    def fetch_next_job(self):
+        """Fetch one unexecuted job"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT id, job_id FROM job_queue
+            WHERE executed_at IS NULL
+            ORDER BY enqueued_at
+            LIMIT 1
+        """)
+        row = cursor.fetchone()
+        return row
+
+    def mark_job_executed(self, queue_id):
+        """Mark job as executed"""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            UPDATE job_queue
+            SET executed_at = ?
+            WHERE id = ?
+        """, (datetime.utcnow().isoformat(), queue_id))
+        self.conn.commit()
+    
     def close(self):
         self.conn.close()
+
+
+

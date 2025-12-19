@@ -12,10 +12,13 @@ class Scheduler:
         try:
             while True:
                 if self.leader.try_acquire_leadership():
-                    # Only leader schedules jobs
+                    # Only leader enqueues jobs
                     for job in self.jobs:
                         if job.is_due():
-                            job.run()
+                            print(f"[{datetime.now()}] Enqueuing job: {job.job_id}")
+                            self.repo.enqueue_job(job.job_id)
+                            # Update last_run_time in job table
+                            job.last_run_time = datetime.utcnow()
                             self.repo.update_last_run(job.job_id, job.last_run_time)
                     # Renew leadership periodically
                     self.leader.renew_leadership()

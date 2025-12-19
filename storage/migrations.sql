@@ -10,3 +10,11 @@ CREATE TABLE IF NOT EXISTS leader_lock (
     locked_at TEXT,
     expires_at TEXT
 );
+
+
+CREATE TABLE IF NOT EXISTS job_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id TEXT NOT NULL,
+    enqueued_at TEXT NOT NULL,
+    executed_at TEXT
+);
