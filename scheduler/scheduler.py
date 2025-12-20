@@ -3,7 +3,7 @@ from datetime import datetime
 
 class Scheduler:
     def __init__(self, jobs, repository, leader_election):
-        self.jobs = jobs
+        # jobs param kept for backward compatibility, but no longer used
         self.repo = repository
         self.leader = leader_election
 
@@ -12,18 +12,29 @@ class Scheduler:
         try:
             while True:
                 if self.leader.try_acquire_leadership():
-                    # Only leader enqueues jobs
-                    for job in self.jobs:
+                    # 1️⃣ reclaim stuck jobs (crashed workers)
+                    self.repo.reclaim_stale_in_progress()
+
+                    # 2️⃣ ALWAYS reload jobs from DB (source of truth)
+                    jobs = self.repo.load_jobs()
+
+                    for job in jobs:
+                        # 3️⃣ pause support
+                        if getattr(job, "paused", 0) == 1:
+                            continue
+
+                        # 4️⃣ interval logic
                         if job.is_due():
-                            print(f"[{datetime.now()}] Enqueuing job: {job.job_id}")
-                            self.repo.enqueue_job(job.job_id)
-                            # Update last_run_time in job table
-                            job.last_run_time = datetime.utcnow()
-                            self.repo.update_last_run(job.job_id, job.last_run_time)
-                    # Renew leadership periodically
+                            enqueued = self.repo.enqueue_job(job.job_id)
+                            if enqueued:
+                                self.repo.advance_next_run(job.job_id, job.interval_seconds)
+                                print(f"[{datetime.now()}] Enqueued job: {job.job_id}")
+
+                    # 5️⃣ keep leadership alive
                     self.leader.renew_leadership()
                 else:
                     print(f"[{datetime.now()}] Not leader, waiting...")
+
                 time.sleep(1)
         except KeyboardInterrupt:
             print("\nScheduler stopped manually.")
