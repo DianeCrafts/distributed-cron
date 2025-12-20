@@ -12,25 +12,25 @@ class Scheduler:
         try:
             while True:
                 if self.leader.try_acquire_leadership():
-                    # 1️⃣ reclaim stuck jobs (crashed workers)
+                    # reclaim stuck jobs (crashed workers)
                     self.repo.reclaim_stale_in_progress()
 
-                    # 2️⃣ ALWAYS reload jobs from DB (source of truth)
+                    # ALWAYS reload jobs from DB (source of truth)
                     jobs = self.repo.load_jobs()
 
                     for job in jobs:
-                        # 3️⃣ pause support
+                        # pause support
                         if getattr(job, "paused", 0) == 1:
                             continue
 
-                        # 4️⃣ interval logic
+                        # interval logic
                         if job.is_due():
                             enqueued = self.repo.enqueue_job(job.job_id)
                             if enqueued:
                                 self.repo.advance_next_run(job.job_id, job.interval_seconds)
                                 print(f"[{datetime.now()}] Enqueued job: {job.job_id}")
 
-                    # 5️⃣ keep leadership alive
+                    # keep leadership alive
                     self.leader.renew_leadership()
                 else:
                     print(f"[{datetime.now()}] Not leader, waiting...")
