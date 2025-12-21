@@ -37,7 +37,7 @@ class Worker:
 
                     # simulate processing
                     for _ in range(5):
-                        time.sleep(1)
+                        time.sleep(2)
                         # renew lease while running (important for long tasks)
                         if not self.repo.renew_lease(queue_id, self.worker_id):
                             print(f"[{datetime.now()}] Lost lease for queue_id={queue_id}. Stopping work.")

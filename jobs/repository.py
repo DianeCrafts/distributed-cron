@@ -227,6 +227,110 @@ class JobRepository:
         """, (next_run.isoformat(), job_id))
         self.conn.commit()
 
+    def delete_job(self, job_id: str):
+        cursor = self.conn.cursor()
+
+        # Remove pending jobs (safe)
+        cursor.execute("""
+            DELETE FROM job_queue
+            WHERE job_id = ? AND status = 'pending'
+        """, (job_id,))
+
+        # Remove job definition
+        cursor.execute("""
+            DELETE FROM jobs
+            WHERE id = ?
+        """, (job_id,))
+
+        self.conn.commit()
+
+
+    def list_queue_rows(self, limit: int = 50, status: str | None = None):
+        cursor = self.conn.cursor()
+
+        if status:
+            cursor.execute("""
+                SELECT id, job_id, status, attempts, worker_id,
+                    enqueued_at, started_at, executed_at, last_error
+                FROM job_queue
+                WHERE status = ?
+                ORDER BY enqueued_at DESC
+                LIMIT ?
+            """, (status, limit))
+        else:
+            cursor.execute("""
+                SELECT id, job_id, status, attempts, worker_id,
+                    enqueued_at, started_at, executed_at, last_error
+                FROM job_queue
+                ORDER BY enqueued_at DESC
+                LIMIT ?
+            """, (limit,))
+
+        return cursor.fetchall()
+
+
+    def list_jobs_rows(self):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT id,
+                interval_seconds,
+                paused,
+                next_run_time,
+                last_run_time
+            FROM jobs
+            ORDER BY id
+        """)
+        return cursor.fetchall()
+    
+    def queue_counts(self):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT status, COUNT(*) as c
+            FROM job_queue
+            GROUP BY status
+        """)
+        rows = cursor.fetchall()
+        return {row["status"]: row["c"] for row in rows}
+
+
+
+
+    def list_queue_rows(self, limit: int = 50, status: str | None = None):
+        cursor = self.conn.cursor()
+
+        if status:
+            cursor.execute("""
+                SELECT id,
+                    job_id,
+                    status,
+                    attempts,
+                    worker_id,
+                    enqueued_at,
+                    started_at,
+                    executed_at,
+                    last_error
+                FROM job_queue
+                WHERE status = ?
+                ORDER BY enqueued_at DESC
+                LIMIT ?
+            """, (status, limit))
+        else:
+            cursor.execute("""
+                SELECT id,
+                    job_id,
+                    status,
+                    attempts,
+                    worker_id,
+                    enqueued_at,
+                    started_at,
+                    executed_at,
+                    last_error
+                FROM job_queue
+                ORDER BY enqueued_at DESC
+                LIMIT ?
+            """, (limit,))
+
+        return cursor.fetchall()
 
     def close(self):
         self.conn.close()
