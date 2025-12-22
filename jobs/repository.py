@@ -245,28 +245,28 @@ class JobRepository:
         self.conn.commit()
 
 
-    def list_queue_rows(self, limit: int = 50, status: str | None = None):
-        cursor = self.conn.cursor()
+    # def list_queue_rows(self, limit: int = 50, status: str | None = None):
+    #     cursor = self.conn.cursor()
 
-        if status:
-            cursor.execute("""
-                SELECT id, job_id, status, attempts, worker_id,
-                    enqueued_at, started_at, executed_at, last_error
-                FROM job_queue
-                WHERE status = ?
-                ORDER BY enqueued_at DESC
-                LIMIT ?
-            """, (status, limit))
-        else:
-            cursor.execute("""
-                SELECT id, job_id, status, attempts, worker_id,
-                    enqueued_at, started_at, executed_at, last_error
-                FROM job_queue
-                ORDER BY enqueued_at DESC
-                LIMIT ?
-            """, (limit,))
+    #     if status:
+    #         cursor.execute("""
+    #             SELECT id, job_id, status, attempts, worker_id,
+    #                 enqueued_at, started_at, executed_at, last_error
+    #             FROM job_queue
+    #             WHERE status = ?
+    #             ORDER BY enqueued_at DESC
+    #             LIMIT ?
+    #         """, (status, limit))
+    #     else:
+    #         cursor.execute("""
+    #             SELECT id, job_id, status, attempts, worker_id,
+    #                 enqueued_at, started_at, executed_at, last_error
+    #             FROM job_queue
+    #             ORDER BY enqueued_at DESC
+    #             LIMIT ?
+    #         """, (limit,))
 
-        return cursor.fetchall()
+    #     return cursor.fetchall()
 
 
     def list_jobs_rows(self):
